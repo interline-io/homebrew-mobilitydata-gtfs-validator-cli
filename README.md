@@ -34,4 +34,4 @@ To update this formula:
 ./utils/calculate-checksums.rb
 ```
 
-Then update the `url` and `sha256` values in `mobilitydata-gtfs-validator-cli.rb`. 
+Then update the `url` and `sha256` values in `Formula/mobilitydata-gtfs-validator-cli.rb`. 
