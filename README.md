@@ -31,7 +31,7 @@ For detailed usage examples and all available options, see the [GTFS Validator u
 To update this formula:
 
 ```bash
-./calculate-checksums.rb
+./utils/calculate-checksums.rb
 ```
 
 Then update the `url` and `sha256` values in `mobilitydata-gtfs-validator-cli.rb`. 
