@@ -4,7 +4,7 @@ This repository contains a Homebrew formula for the [MobilityData GTFS Validator
 
 **Installation:**
 ```bash
-brew install interline-io/mobilitydata-gtfs-validator
+brew install interline-io/mobilitydata-gtfs-validator-cli
 ```
 
 **Usage:**

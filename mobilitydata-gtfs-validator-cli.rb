@@ -1,4 +1,4 @@
-class MobilitydataGtfsValidator < Formula
+class MobilitydataGtfsValidatorCli < Formula
   desc "MobilityData GTFS Validator CLI - Validates GTFS feeds"
   homepage "https://github.com/MobilityData/gtfs-validator"
   url "https://github.com/MobilityData/gtfs-validator/releases/download/v7.1.0/gtfs-validator-7.1.0-cli.jar"
