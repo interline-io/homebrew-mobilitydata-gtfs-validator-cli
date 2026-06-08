@@ -13,7 +13,9 @@ on:
 # Least privilege by default; the job below requests exactly what it needs.
 permissions: {}
 
-# Only one update run at a time; cancel a stale scheduled run if a new one starts.
+# Serialize runs: only one update runs at a time. A run that starts while
+# another is in progress queues until the first finishes (we don't cancel an
+# in-flight run, since it may be mid-PR-creation).
 concurrency:
   group: update-formula
   cancel-in-progress: false
