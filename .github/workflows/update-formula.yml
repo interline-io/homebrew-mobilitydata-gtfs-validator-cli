@@ -1,0 +1,150 @@
+name: "Update Formula"
+on:
+  schedule:
+    # Daily at 12:00 UTC
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update to (e.g., v7.2.0). Leave blank to use the latest upstream release.'
+        required: false
+        type: string
+
+# Least privilege by default; the job below requests exactly what it needs.
+permissions: {}
+
+# Only one update run at a time; cancel a stale scheduled run if a new one starts.
+concurrency:
+  group: update-formula
+  cancel-in-progress: false
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Determine versions
+        id: versions
+        env:
+          # Pass untrusted/secret values through the environment rather than
+          # interpolating them into the script (avoids shell injection).
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Target version: explicit input, or the latest upstream release.
+          if [ -n "$INPUT_VERSION" ]; then
+            LATEST="$INPUT_VERSION"
+          else
+            LATEST=$(curl -fsSL \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              https://api.github.com/repos/MobilityData/gtfs-validator/releases/latest \
+              | jq -r '.tag_name')
+          fi
+          # Normalize to a leading "v".
+          case "$LATEST" in
+            v*) ;;
+            *)  LATEST="v${LATEST}" ;;
+          esac
+
+          # Strict allow-list: refuse anything that isn't a clean vMAJOR.MINOR.PATCH
+          # tag before it reaches a URL, sed, or branch name.
+          if ! printf '%s' "$LATEST" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Error: '${LATEST}' is not a valid vX.Y.Z version." >&2
+            exit 1
+          fi
+
+          # Current version baked into the formula's download URL.
+          CURRENT=$(grep -oE 'releases/download/v[0-9.]+/' Formula/mobilitydata-gtfs-validator-cli.rb \
+            | head -1 | sed -E 's#releases/download/(v[0-9.]+)/#\1#')
+
+          echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
+          echo "current=${CURRENT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$LATEST" = "$CURRENT" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Already up to date at ${CURRENT}."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Update available: ${CURRENT} -> ${LATEST}"
+          fi
+
+      - name: Calculate checksum
+        id: hash
+        if: steps.versions.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.versions.outputs.latest }}
+        run: |
+          set -euo pipefail
+          VERSION_NO_V="${VERSION#v}"
+          JAR="gtfs-validator-${VERSION_NO_V}-cli.jar"
+          URL="https://github.com/MobilityData/gtfs-validator/releases/download/${VERSION}/${JAR}"
+
+          echo "Downloading ${URL}..."
+          curl -fSL "$URL" -o "$JAR"
+          SHA=$(sha256sum "$JAR" | cut -d' ' -f1)
+          rm -f "$JAR"
+
+          echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "Calculated SHA256: ${SHA}"
+
+      - name: Update formula
+        if: steps.versions.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.versions.outputs.latest }}
+          SHA: ${{ steps.hash.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          VERSION_NO_V="${VERSION#v}"
+          FILE="Formula/mobilitydata-gtfs-validator-cli.rb"
+
+          # Release download path uses the tag (with leading v).
+          sed -i -E "s#releases/download/v[0-9.]+/#releases/download/${VERSION}/#" "$FILE"
+          # Jar filename uses the version without v (url, libexec.install, write_jar_script).
+          sed -i -E "s#gtfs-validator-[0-9.]+-cli\.jar#gtfs-validator-${VERSION_NO_V}-cli.jar#g" "$FILE"
+          # Checksum.
+          sed -i -E "s#sha256 \"[a-f0-9]{64}\"#sha256 \"${SHA}\"#" "$FILE"
+
+          echo "Updated formula:"
+          cat "$FILE"
+
+      - name: Create Pull Request
+        id: cpr
+        if: steps.versions.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: update-formula-${{ steps.versions.outputs.latest }}
+          title: "Update gtfs-validator to ${{ steps.versions.outputs.latest }}"
+          body: |
+            This PR updates the Homebrew formula for gtfs-validator from
+            ${{ steps.versions.outputs.current }} to ${{ steps.versions.outputs.latest }}.
+
+            ## Changes
+            - Updated version to ${{ steps.versions.outputs.latest }}
+            - Updated SHA256 checksum for the CLI jar:
+              - `${{ steps.hash.outputs.sha256 }}`
+
+            ## Release
+            https://github.com/MobilityData/gtfs-validator/releases/tag/${{ steps.versions.outputs.latest }}
+
+            ---
+            *Auto-generated by GitHub Actions*
+          commit-message: "Update gtfs-validator to ${{ steps.versions.outputs.latest }}"
+          delete-branch: true
+
+      - name: Log PR creation results
+        if: ${{ steps.cpr.outputs.pull-request-number }}
+        run: |
+          echo "✅ Pull Request created successfully!"
+          echo "PR Number: ${{ steps.cpr.outputs.pull-request-number }}"
+          echo "PR URL: ${{ steps.cpr.outputs.pull-request-url }}"
+          echo "Branch: ${{ steps.cpr.outputs.pull-request-branch }}"
