@@ -1,16 +1,16 @@
 class MobilitydataGtfsValidatorCli < Formula
   desc "Validates GTFS feeds"
   homepage "https://github.com/MobilityData/gtfs-validator"
-  url "https://github.com/MobilityData/gtfs-validator/releases/download/v7.1.0/gtfs-validator-7.1.0-cli.jar"
-  sha256 "52c2785089aaf04e7ba1bb11b2db215692e2622eb0e196b823c194d156d9b58c"
+  url "https://github.com/MobilityData/gtfs-validator/releases/download/v8.0.1/gtfs-validator-8.0.1-cli.jar"
+  sha256 "19293ddd9b6f954f216d4f12054bd8a3232921751c4484339e339764a91000e2"
   license "Apache-2.0"
   head "https://github.com/MobilityData/gtfs-validator.git"
 
   depends_on "openjdk@17" => :optional
 
   def install
-    libexec.install "gtfs-validator-7.1.0-cli.jar"
-    bin.write_jar_script libexec/"gtfs-validator-7.1.0-cli.jar", "mobilitydata-gtfs-validator"
+    libexec.install "gtfs-validator-8.0.1-cli.jar"
+    bin.write_jar_script libexec/"gtfs-validator-8.0.1-cli.jar", "mobilitydata-gtfs-validator"
   end
 
   def caveats
