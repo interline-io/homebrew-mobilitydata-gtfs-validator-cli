@@ -33,7 +33,7 @@ def calculate_checksum(url)
   checksum = nil
   
   begin
-    URI.open(url) do |file|
+    URI(url).open do |file|
       require 'digest'
       checksum = Digest::SHA256.hexdigest(file.read)
     end
