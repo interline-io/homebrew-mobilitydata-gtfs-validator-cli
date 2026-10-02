@@ -18,10 +18,7 @@ For detailed usage examples and all available options, see the [GTFS Validator u
 
 - macOS
 - Homebrew
-- Java 17 or higher (any distribution)
-
-> [!TIP]
-> For managing multiple Java versions, consider installing [jenv](https://github.com/jenv/jenv)
+Java is installed automatically via Homebrew's `openjdk` formula. To use a different Java 17+ distribution instead, set `JAVA_HOME` before running `mobilitydata-gtfs-validator`.
 
 > [!TIP]
 > To instead use a desktop GUI package, download it directly from the [MobilityData GTFS Validator releases page](https://github.com/MobilityData/gtfs-validator/releases).
